@@ -57,7 +57,10 @@ export default async function handler(req) {
   }
 
   const url     = new URL(req.url)
-  const parts   = url.pathname.replace('/api/links', '').split('/').filter(Boolean)
+  // When routed via netlify.toml, sub-path is passed as ?path=
+  // e.g. /api/links/abc123/stats → ?path=abc123/stats
+  const rawPath = url.searchParams.get('path') || ''
+  const parts   = rawPath.split('/').filter(Boolean)
   const code    = parts[0]
   const subpath = parts[1] // e.g. 'stats'
 
