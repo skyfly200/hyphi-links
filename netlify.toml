@@ -7,34 +7,40 @@
   port = 8888
   targetPort = 5173
 
-# All short link requests → redirect function
-[[redirects]]
-  from = "/:code"
-  to = "/.netlify/functions/redirect/:code"
-  status = 200
-  force = true
-  conditions = {Role = ["admin"]}
-
-# Exclude admin UI routes from the redirect rule
-[[redirects]]
-  from = "/admin"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/admin/*"
-  to = "/index.html"
-  status = 200
-
-# All short codes → redirect function (must come after admin exclusions)
-[[redirects]]
-  from = "/:code"
-  to = "/.netlify/functions/redirect"
-  status = 200
-  force = true
-
 [functions]
   node_bundler = "esbuild"
 
 [context.production.environment]
   NODE_ENV = "production"
+
+# Admin UI — must come before the catch-all
+[[redirects]]
+  from = "/admin"
+  to = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
+# API routes → links-api function
+[[redirects]]
+  from = "/api/links"
+  to = "/.netlify/functions/links-api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/links/*"
+  to = "/.netlify/functions/links-api"
+  status = 200
+  force = true
+
+# Short code catch-all → redirect function
+# Must be last so admin and api routes take priority
+[[redirects]]
+  from = "/:code"
+  to = "/.netlify/functions/redirect"
+  status = 200
+  force = true
