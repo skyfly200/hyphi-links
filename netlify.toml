@@ -24,19 +24,16 @@
   to = "/admin/index.html"
   status = 200
 
-# API — base route (list / create)
+# API routes — must come before /:code catch-all
 [[redirects]]
   from = "/api/links"
   to = "/.netlify/functions/links-api"
   status = 200
-  force = true
 
-# API — sub-routes (/:code and /:code/stats) — pass sub-path as query param
 [[redirects]]
   from = "/api/links/*"
   to = "/.netlify/functions/links-api?path=:splat"
   status = 200
-  force = true
 
 # Short code catch-all — pass code as query param
 [[redirects]]
