@@ -57,9 +57,13 @@ export default async function handler(req) {
   }
 
   const url     = new URL(req.url)
-  // When routed via netlify.toml, sub-path is passed as ?path=
-  // e.g. /api/links/abc123/stats → ?path=abc123/stats
-  const rawPath = url.searchParams.get('path') || ''
+  // Support both routing modes:
+  //   via netlify.toml redirect: ?path=abc123/stats
+  //   via function path config:  /api/links/abc123/stats
+  const rawPath = url.searchParams.get('path') ||
+                  (url.pathname.startsWith('/api/links')
+                    ? url.pathname.slice('/api/links'.length).replace(/^\//, '')
+                    : '')
   const parts   = rawPath.split('/').filter(Boolean)
   const code    = parts[0]
   const subpath = parts[1] // e.g. 'stats'
@@ -132,7 +136,7 @@ export default async function handler(req) {
         .select('*, clicks(count)')
         .order('created_at', { ascending: false })
 
-      if (!error) {
+      if (!error && data) {
         const links = data.map(l => ({
           ...l,
           click_count: l.clicks?.[0]?.count ?? 0,
