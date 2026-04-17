@@ -141,16 +141,25 @@ function showApp() {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 async function api(path, options = {}) {
-  const res = await fetch(`/api/links${path}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${SECRET}`,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    }
-  })
+  let res
+  try {
+    res = await fetch(`/api/links${path}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${SECRET}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      }
+    })
+  } catch(e) {
+    return { error: `Network error: ${e.message}` }
+  }
   if (res.status === 401) { logout(); return null }
-  return res.json()
+  try {
+    return await res.json()
+  } catch(e) {
+    return { error: `Server error (${res.status})` }
+  }
 }
 
 // ── Notice ────────────────────────────────────────────────────────────────────
@@ -187,7 +196,12 @@ async function createLink() {
 async function loadLinks() {
   const data = await api('')
   const el   = document.getElementById('links-list')
-  if (!data?.links?.length) {
+  if (!data) return
+  if (data.error) {
+    el.innerHTML = `<div class="empty" style="color:var(--rd)">${data.error}</div>`
+    return
+  }
+  if (!data.links?.length) {
     el.innerHTML = '<div class="empty">No links yet. Create one above.</div>'
     return
   }

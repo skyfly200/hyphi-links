@@ -57,9 +57,13 @@ export default async function handler(req) {
   }
 
   const url     = new URL(req.url)
-  // When routed via netlify.toml, sub-path is passed as ?path=
-  // e.g. /api/links/abc123/stats → ?path=abc123/stats
-  const rawPath = url.searchParams.get('path') || ''
+  // Support both routing modes:
+  //   via netlify.toml redirect: ?path=abc123/stats
+  //   via function path config:  /api/links/abc123/stats
+  const rawPath = url.searchParams.get('path') ||
+                  (url.pathname.startsWith('/api/links')
+                    ? url.pathname.slice('/api/links'.length).replace(/^\//, '')
+                    : '')
   const parts   = rawPath.split('/').filter(Boolean)
   const code    = parts[0]
   const subpath = parts[1] // e.g. 'stats'
@@ -101,9 +105,14 @@ export default async function handler(req) {
       label:      body.label || null,
     }
 
-    await store.set(slug, JSON.stringify(entry))
+    try {
+      await store.set(slug, JSON.stringify(entry))
+    } catch(e) {
+      console.error('[Blobs] Set error:', e.message)
+      return json({ error: 'Failed to save link' }, 500)
+    }
 
-    // Also record in Supabase links table for easy querying
+    // Mirror to Supabase for analytics queries (best-effort)
     const supabase = getSupabase()
     if (supabase) {
       try {
@@ -124,33 +133,41 @@ export default async function handler(req) {
 
   // ── GET /api/links — list all ─────────────────────────────────────────────
   if (req.method === 'GET' && !code) {
-    const supabase = getSupabase()
-    if (supabase) {
-      // Get links with click counts from Supabase
-      const { data, error } = await supabase
-        .from('links')
-        .select('*, clicks(count)')
-        .order('created_at', { ascending: false })
+    // Blobs is the source of truth — Supabase sync may lag or fail
+    let links
+    try {
+      const { blobs } = await store.list()
+      links = (await Promise.all(
+        blobs.map(async b => {
+          const raw = await store.get(b.key, { type: 'json' }).catch(() => null)
+          return raw ? { ...raw, click_count: 0, short_url: `https://l.hyphi.art/${b.key}` } : null
+        })
+      )).filter(Boolean)
+      links.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    } catch(e) {
+      console.error('[Blobs] List error:', e.message)
+      return json({ error: 'Failed to load links' }, 500)
+    }
 
-      if (!error) {
-        const links = data.map(l => ({
-          ...l,
-          click_count: l.clicks?.[0]?.count ?? 0,
-          short_url: `https://l.hyphi.art/${l.code}`,
-        }))
-        return json({ links })
+    // Enrich click counts from Supabase (best-effort, doesn't need links in Supabase)
+    const supabase = getSupabase()
+    if (supabase && links.length > 0) {
+      try {
+        const codes = links.map(l => l.code)
+        const { data, error } = await supabase
+          .from('clicks')
+          .select('code')
+          .in('code', codes)
+        if (!error && data) {
+          const counts = data.reduce((acc, r) => { acc[r.code] = (acc[r.code] || 0) + 1; return acc }, {})
+          for (const l of links) l.click_count = counts[l.code] ?? 0
+        }
+      } catch(e) {
+        console.error('[Supabase] Click count error:', e.message)
       }
     }
 
-    // Fallback: list from Blobs if Supabase unavailable
-    const { blobs } = await store.list()
-    const links = await Promise.all(
-      blobs.map(async b => {
-        const raw = await store.get(b.key, { type: 'json' }).catch(() => null)
-        return raw ? { ...raw, short_url: `https://l.hyphi.art/${b.key}` } : null
-      })
-    )
-    return json({ links: links.filter(Boolean) })
+    return json({ links })
   }
 
   // ── GET /api/links/:code/stats ────────────────────────────────────────────
