@@ -227,7 +227,3 @@ export default async function handler(req) {
 
   return json({ error: 'Not found' }, 404)
 }
-
-export const config = {
-  path: '/api/links*',
-}
