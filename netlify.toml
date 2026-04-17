@@ -13,7 +13,7 @@
 [context.production.environment]
   NODE_ENV = "production"
 
-# Admin UI — must come before the catch-all
+# Admin UI
 [[redirects]]
   from = "/admin"
   to = "/admin/index.html"
@@ -24,7 +24,7 @@
   to = "/admin/index.html"
   status = 200
 
-# API routes → links-api function
+# API routes
 [[redirects]]
   from = "/api/links"
   to = "/.netlify/functions/links-api"
@@ -37,10 +37,9 @@
   status = 200
   force = true
 
-# Short code catch-all → redirect function
-# Must be last so admin and api routes take priority
+# Short code catch-all — pass the code as a splat query param
 [[redirects]]
   from = "/:code"
-  to = "/.netlify/functions/redirect"
+  to = "/.netlify/functions/redirect?code=:code"
   status = 200
   force = true

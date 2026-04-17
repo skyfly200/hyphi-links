@@ -79,9 +79,11 @@ async function logClick({ code, destination, userAgent, ip, referrer, country })
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 export default async function handler(req, context) {
-  // Extract short code from the URL path
-  const url  = new URL(req.url)
-  const code = url.pathname.replace(/^\//, '').split('/')[0]
+  // Extract short code — from query param (passed by netlify.toml redirect rule)
+  // or fall back to path segment for direct function calls
+  const url   = new URL(req.url)
+  const code  = url.searchParams.get('code') ||
+                url.pathname.replace(/^\//, '').split('/').filter(p => p && p !== 'redirect')[0]
 
   if (!code || code === 'favicon.ico') {
     return new Response('Not found', { status: 404 })
@@ -133,7 +135,4 @@ export default async function handler(req, context) {
   })
 }
 
-export const config = {
-  path: '/:code',
-  excludedPath: ['/admin', '/admin/*', '/favicon.ico', '/.netlify/*'],
-}
+
