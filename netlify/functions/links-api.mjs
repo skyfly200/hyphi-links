@@ -223,5 +223,5 @@ export default async function handler(req) {
 }
 
 export const config = {
-  path: '/api/links*',
+  path: ['/api/links', '/api/links/*'],
 }
