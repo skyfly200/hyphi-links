@@ -103,12 +103,17 @@ export default async function handler(req) {
     // Also record in Supabase links table for easy querying
     const supabase = getSupabase()
     if (supabase) {
-      await supabase.from('links').upsert({
-        code:        slug,
-        destination,
-        label:       body.label || null,
-        created_at:  entry.created_at,
-      }).catch(e => console.error('[Supabase] Link upsert error:', e.message))
+      try {
+        const { error } = await supabase.from('links').upsert({
+          code:        slug,
+          destination,
+          label:       body.label || null,
+          created_at:  entry.created_at,
+        })
+        if (error) console.error('[Supabase] Link upsert error:', error.message)
+      } catch(e) {
+        console.error('[Supabase] Link upsert error:', e.message)
+      }
     }
 
     return json({ ...entry, short_url: `https://l.hyphi.art/${slug}` }, 201)
@@ -189,8 +194,12 @@ export default async function handler(req) {
 
     const supabase = getSupabase()
     if (supabase) {
-      await supabase.from('links').delete().eq('code', code)
-        .catch(e => console.error('[Supabase] Delete error:', e.message))
+      try {
+        const { error } = await supabase.from('links').delete().eq('code', code)
+        if (error) console.error('[Supabase] Delete error:', error.message)
+      } catch(e) {
+        console.error('[Supabase] Delete error:', e.message)
+      }
     }
 
     return json({ deleted: code })

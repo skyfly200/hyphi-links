@@ -62,16 +62,16 @@ async function logClick({ code, destination, userAgent, ip, referrer, country })
   if (!supabase) return
 
   try {
-    await supabase.from('clicks').insert({
+    const { error } = await supabase.from('clicks').insert({
       code,
       destination,
       user_agent:  userAgent  || null,
       referrer:    referrer   || null,
       country:     country    || null,
-      // Store only a hash of the IP — not the IP itself
       ip_hash:     ip ? Buffer.from(ip).toString('base64').slice(0, 16) : null,
       clicked_at:  new Date().toISOString(),
     })
+    if (error) console.error('[Supabase] Click log error:', error.message)
   } catch (err) {
     console.error('[Supabase] Click log error:', err.message)
   }
