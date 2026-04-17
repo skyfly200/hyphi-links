@@ -57,7 +57,7 @@ export default async function handler(req) {
   }
 
   const url     = new URL(req.url)
-  const rawPath = url.pathname.slice('/api/links'.length).replace(/^\//, '')
+  const rawPath = url.searchParams.get('path') || ''
   const parts   = rawPath.split('/').filter(Boolean)
   const code    = parts[0]
   const subpath = parts[1] // e.g. 'stats'
@@ -220,8 +220,4 @@ export default async function handler(req) {
   }
 
   return json({ error: 'Not found' }, 404)
-}
-
-export const config = {
-  path: ['/api/links', '/api/links/*'],
 }
