@@ -57,13 +57,7 @@ export default async function handler(req) {
   }
 
   const url     = new URL(req.url)
-  // Support both routing modes:
-  //   via netlify.toml redirect: ?path=abc123/stats
-  //   via function path config:  /api/links/abc123/stats
-  const rawPath = url.searchParams.get('path') ||
-                  (url.pathname.startsWith('/api/links')
-                    ? url.pathname.slice('/api/links'.length).replace(/^\//, '')
-                    : '')
+  const rawPath = url.pathname.slice('/api/links'.length).replace(/^\//, '')
   const parts   = rawPath.split('/').filter(Boolean)
   const code    = parts[0]
   const subpath = parts[1] // e.g. 'stats'
@@ -226,4 +220,8 @@ export default async function handler(req) {
   }
 
   return json({ error: 'Not found' }, 404)
+}
+
+export const config = {
+  path: '/api/links*',
 }
