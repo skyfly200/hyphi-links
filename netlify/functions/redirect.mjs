@@ -119,8 +119,9 @@ export default async function handler(req, context) {
   const ip        = context.ip || req.headers.get('x-forwarded-for')?.split(',')[0].trim() || ''
   const country   = context.geo?.country?.code    || req.headers.get('x-country')           || ''
 
-  // Fire analytics in parallel — don't await, don't block the redirect
-  Promise.all([
+  // Await analytics before returning — serverless execution freezes on response,
+  // so unawaited promises get cut off before Supabase can finish the insert.
+  await Promise.all([
     logClick({ code, destination: entry.destination, userAgent, ip, referrer, country }),
     sendGAEvent({ code, destination: entry.destination, userAgent, ip, referrer }),
   ]).catch(err => console.error('[Analytics] Error:', err.message))
