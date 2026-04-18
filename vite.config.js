@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
-  // No framework needed — admin is plain HTML in public/
-  // Vite just copies public/ to dist/ on build
+  plugins: [vue()],
   publicDir: 'public',
   build: {
     outDir: 'dist',
