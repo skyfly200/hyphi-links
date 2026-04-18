@@ -20,19 +20,27 @@
           <input type="url" v-model="form.destination" placeholder="https://…" />
         </div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          <label class="lbl">Custom code (optional)</label>
-          <div style="position:relative">
-            <input
-              type="text"
-              v-model="form.code"
-              placeholder="auto-generated"
-              @input="onCodeInput"
-              style="font-family:'DM Mono',monospace;padding-right:76px"
-            />
-            <span
-              v-if="codeStatus"
-              :style="`position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.68rem;font-family:'DM Mono',monospace;color:${codeStatus==='available'?'var(--gr)':codeStatus==='taken'?'var(--rd)':'var(--mu)'};pointer-events:none`"
-            >{{ codeStatus === 'available' ? '✓ free' : codeStatus === 'taken' ? '✗ taken' : '…' }}</span>
+          <label class="lbl">Short code</label>
+          <div style="display:flex;gap:6px">
+            <div style="position:relative;flex:1">
+              <input
+                type="text"
+                v-model="form.code"
+                placeholder="auto-generated"
+                @input="onCodeInput"
+                style="font-family:'DM Mono',monospace;padding-right:72px"
+              />
+              <span
+                v-if="codeStatus"
+                :style="`position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:.68rem;font-family:'DM Mono',monospace;color:${codeStatus==='available'?'var(--gr)':codeStatus==='taken'?'var(--rd)':'var(--mu)'};pointer-events:none`"
+              >{{ codeStatus === 'available' ? '✓ free' : codeStatus === 'taken' ? '✗ taken' : '…' }}</span>
+            </div>
+            <button
+              class="btn-ghost"
+              @click="rerandomize"
+              title="Generate new code"
+              style="padding:8px 10px;font-size:.9rem;flex-shrink:0"
+            >↻</button>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px">
@@ -151,6 +159,14 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const secret = localStorage.getItem('hyphi_admin_secret') || ''
 
+const CHARSET = 'abcdefghjkmnpqrstuvwxyz23456789'
+
+function generateCode(len = 5) {
+  let code = ''
+  for (let i = 0; i < len; i++) code += CHARSET[Math.floor(Math.random() * CHARSET.length)]
+  return code
+}
+
 const links        = ref([])
 const loadingLinks = ref(true)
 const creating     = ref(false)
@@ -222,7 +238,7 @@ async function createLink() {
   if (data.error) return showNotice(data.error, 'error')
   showNotice(`Created: ${data.short_url}`)
   form.value = { destination: '', code: '', label: '', is_public: false }
-  codeStatus.value = ''
+  await rerandomize()
   await loadLinks()
 }
 
@@ -231,14 +247,23 @@ function onCodeInput() {
   const val = form.value.code.trim()
   if (!val) { codeStatus.value = ''; return }
   codeStatus.value = 'checking'
-  codeTimer = setTimeout(async () => {
-    const data = await api(`/check?code=${encodeURIComponent(val)}`)
-    if (data?.available !== undefined) {
-      codeStatus.value = data.available ? 'available' : 'taken'
-    } else {
-      codeStatus.value = ''
-    }
-  }, 400)
+  codeTimer = setTimeout(() => checkCode(val), 400)
+}
+
+async function checkCode(val) {
+  const data = await api(`/check/${encodeURIComponent(val)}`)
+  if (data?.available !== undefined) {
+    codeStatus.value = data.available ? 'available' : 'taken'
+  } else {
+    codeStatus.value = ''
+  }
+}
+
+async function rerandomize() {
+  const code = generateCode()
+  form.value.code = code
+  codeStatus.value = 'checking'
+  await checkCode(code)
 }
 
 async function togglePublic(link) {
@@ -285,5 +310,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-onMounted(loadLinks)
+onMounted(async () => {
+  await Promise.all([loadLinks(), rerandomize()])
+})
 </script>

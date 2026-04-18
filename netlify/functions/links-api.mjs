@@ -101,9 +101,10 @@ export default async function handler(req) {
     return json({ error: 'Unauthorized' }, 401)
   }
 
-  // ── GET /api/links/check?code= — check code availability ─────────────────────
+  // ── GET /api/links/check/:code — check code availability ─────────────────────
+  // Uses path segment (not query string) to avoid redirect-chain forwarding issues
   if (req.method === 'GET' && code === 'check') {
-    const q = url.searchParams.get('code')?.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+    const q = subpath?.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
     if (!q) return json({ error: 'code is required' }, 400)
     if (RESERVED.includes(q)) return json({ available: false })
     const existing = await store.get(q).catch(() => null)
