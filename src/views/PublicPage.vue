@@ -9,6 +9,8 @@
       <span class="spinner"></span> Loading…
     </div>
 
+    <div v-else-if="error" class="notice error">{{ error }}</div>
+
     <div v-else-if="!links.length" class="card" style="text-align:center;padding:40px;color:var(--mu);font-size:.85rem">
       No public links yet.
     </div>
@@ -46,14 +48,19 @@ import { ref, onMounted } from 'vue'
 
 const links   = ref([])
 const loading = ref(true)
+const error   = ref('')
 
 onMounted(async () => {
   try {
     const res  = await fetch('/api/links/public')
     const data = await res.json()
-    links.value = data.links || []
-  } catch {
-    // silently fail — empty list shown
+    if (data.error) {
+      error.value = `API error: ${data.error}`
+    } else {
+      links.value = data.links || []
+    }
+  } catch(e) {
+    error.value = `Failed to load links: ${e.message}`
   } finally {
     loading.value = false
   }

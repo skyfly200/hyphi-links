@@ -219,34 +219,43 @@ export default async function handler(req) {
     const supabase = getSupabase()
     if (!supabase) return json({ error: 'Supabase not configured' }, 503)
 
-    const { data: totals } = await supabase
+    // Fetch all clicks in one query, aggregate in JS — avoids PostgREST aggregate syntax issues
+    const { data: clicks, error } = await supabase
       .from('clicks')
-      .select('count')
-      .eq('code', code)
-
-    const { data: byDay } = await supabase
-      .from('clicks')
-      .select('clicked_at')
+      .select('clicked_at, country, referrer')
       .eq('code', code)
       .order('clicked_at', { ascending: false })
-      .limit(500)
+      .limit(1000)
 
-    const { data: byCountry } = await supabase
-      .from('clicks')
-      .select('country, count:country.count()')
-      .eq('code', code)
+    if (error) {
+      console.error('[Supabase] Stats error:', error.message)
+      return json({ error: error.message }, 500)
+    }
 
-    const { data: byReferrer } = await supabase
-      .from('clicks')
-      .select('referrer, count:referrer.count()')
-      .eq('code', code)
-      .order('count', { ascending: false })
-      .limit(10)
+    const rows = clicks || []
+
+    const countryCounts  = {}
+    const referrerCounts = {}
+    for (const r of rows) {
+      const c = r.country  || null
+      const f = r.referrer || null
+      countryCounts[c]  = (countryCounts[c]  || 0) + 1
+      referrerCounts[f] = (referrerCounts[f] || 0) + 1
+    }
+
+    const byCountry = Object.entries(countryCounts)
+      .map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count)
+
+    const byReferrer = Object.entries(referrerCounts)
+      .map(([referrer, count]) => ({ referrer, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
 
     return json({
       code,
-      total_clicks: totals?.[0]?.count ?? 0,
-      by_day:       byDay,
+      total_clicks: rows.length,
+      by_day:       rows.map(r => ({ clicked_at: r.clicked_at })),
       by_country:   byCountry,
       by_referrer:  byReferrer,
     })
