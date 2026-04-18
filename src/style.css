@@ -108,6 +108,18 @@ button:disabled { opacity: .5; cursor: default; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.toggle-wrap   { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.toggle        { position: relative; display: inline-block; width: 32px; height: 18px; flex-shrink: 0; }
+.toggle input  { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track  { position: absolute; inset: 0; background: var(--bd); border-radius: 18px; transition: .2s; border: 1px solid #2a2a3e; }
+.toggle-track::before {
+  content: ''; position: absolute;
+  width: 12px; height: 12px; left: 2px; top: 2px;
+  background: var(--mu); border-radius: 50%; transition: .2s;
+}
+.toggle input:checked ~ .toggle-track              { background: rgba(74,222,128,.15); border-color: var(--gr); }
+.toggle input:checked ~ .toggle-track::before      { transform: translateX(14px); background: var(--gr); }
+
 @media (max-width: 600px) {
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .link-dest  { max-width: 200px; }

@@ -113,22 +113,24 @@
                   v-if="link.label"
                   style="font-size:.7rem;color:var(--mu);background:var(--s2);padding:2px 7px;border-radius:10px;border:1px solid var(--bd)"
                 >{{ link.label }}</span>
-                <span
-                  v-if="link.is_public"
-                  style="font-size:.68rem;color:var(--gr);background:rgba(74,222,128,.08);padding:2px 7px;border-radius:10px;border:1px solid rgba(74,222,128,.2)"
-                >public</span>
               </div>
               <div class="link-dest" :title="link.destination">{{ link.destination }}</div>
-              <div class="link-meta">{{ formatDate(link.created_at) }}</div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                <span class="link-meta">{{ formatDate(link.created_at) }}</span>
+                <label class="toggle-wrap" title="Toggle public — public links appear on the homepage">
+                  <span class="toggle">
+                    <input type="checkbox" :checked="link.is_public" @change="togglePublic(link)" />
+                    <span class="toggle-track"></span>
+                  </span>
+                  <span style="font-size:.72rem;color:var(--mu)">Public</span>
+                </label>
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
               <span class="clicks-badge" @click="toggleStats(link.code)" title="View click stats">
                 {{ link.click_count ?? '—' }} clicks
               </span>
               <button class="btn-ghost" @click="toggleQR(link.code)" title="Show QR code" style="font-size:.72rem;padding:4px 10px">QR</button>
-              <button class="btn-ghost" @click="togglePublic(link)" style="font-size:.72rem;padding:4px 10px">
-                {{ link.is_public ? 'Make private' : 'Make public' }}
-              </button>
               <button class="btn-ghost" @click="copyLink(`https://l.hyphi.art/${link.code}`)" style="font-size:.72rem;padding:4px 10px">Copy</button>
               <button class="btn-danger" @click="deleteLink(link.code)">Delete</button>
             </div>
