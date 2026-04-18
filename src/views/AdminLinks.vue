@@ -16,11 +16,16 @@
       <div class="section-title">Create short link</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px">
-          <label class="lbl">Destination URL</label>
-          <input type="url" v-model="form.destination" placeholder="https://…" />
+          <label class="lbl" title="The full URL this short link will redirect to">Destination URL</label>
+          <input
+            type="url"
+            v-model="form.destination"
+            placeholder="https://…"
+            title="Enter the full URL to redirect to, including https://"
+          />
         </div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          <label class="lbl">Short code</label>
+          <label class="lbl" title="Shown in the URL: l.hyphi.art/your-code. Leave as generated or type your own.">Short code</label>
           <div style="display:flex;gap:6px">
             <div style="position:relative;flex:1">
               <input
@@ -28,6 +33,7 @@
                 v-model="form.code"
                 placeholder="auto-generated"
                 @input="onCodeInput"
+                title="The short code for your link. Generated codes are random 5-character strings. Type to set a custom one."
                 style="font-family:'DM Mono',monospace;padding-right:72px"
               />
               <span
@@ -36,20 +42,36 @@
               >{{ codeStatus === 'available' ? '✓ free' : codeStatus === 'taken' ? '✗ taken' : '…' }}</span>
             </div>
             <button
+              v-if="!isCustomCode"
               class="btn-ghost"
               @click="rerandomize"
-              title="Generate new code"
+              title="Generate a new random code"
               style="padding:8px 10px;font-size:.9rem;flex-shrink:0"
             >↻</button>
+            <button
+              v-else
+              class="btn-ghost"
+              @click="clearCode"
+              title="Clear custom code and go back to a generated one"
+              style="padding:8px 10px;font-size:.9rem;flex-shrink:0;color:var(--mu)"
+            >×</button>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          <label class="lbl">Label (optional)</label>
-          <input type="text" v-model="form.label" placeholder="e.g. QRForge launch" />
+          <label class="lbl" title="A human-readable name for this link, shown in the admin and on the public page">Label (optional)</label>
+          <input
+            type="text"
+            v-model="form.label"
+            placeholder="e.g. QRForge launch"
+            title="Optional display name — shown alongside the code in the admin list and public page"
+          />
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.8rem;color:var(--mu);user-select:none">
+        <label
+          style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.8rem;color:var(--mu);user-select:none"
+          title="Public links appear on the homepage at l.hyphi.art — private links are admin-only"
+        >
           <input type="checkbox" v-model="form.is_public" style="width:auto;accent-color:var(--ac)" />
           Public (show on public page)
         </label>
@@ -175,6 +197,7 @@ const statsData    = ref(null)
 const statsLoading = ref(false)
 const notice       = ref({ msg: '', type: 'ok' })
 const codeStatus   = ref('') // '' | 'checking' | 'available' | 'taken'
+const isCustomCode = ref(false)
 let   codeTimer    = null
 
 const form = ref({ destination: '', code: '', label: '', is_public: false })
@@ -238,6 +261,7 @@ async function createLink() {
   if (data.error) return showNotice(data.error, 'error')
   showNotice(`Created: ${data.short_url}`)
   form.value = { destination: '', code: '', label: '', is_public: false }
+  isCustomCode.value = false
   await rerandomize()
   await loadLinks()
 }
@@ -245,7 +269,8 @@ async function createLink() {
 function onCodeInput() {
   clearTimeout(codeTimer)
   const val = form.value.code.trim()
-  if (!val) { codeStatus.value = ''; return }
+  if (!val) { codeStatus.value = ''; isCustomCode.value = false; return }
+  isCustomCode.value = true
   codeStatus.value = 'checking'
   codeTimer = setTimeout(() => checkCode(val), 400)
 }
@@ -260,10 +285,15 @@ async function checkCode(val) {
 }
 
 async function rerandomize() {
+  isCustomCode.value = false
   const code = generateCode()
   form.value.code = code
   codeStatus.value = 'checking'
   await checkCode(code)
+}
+
+async function clearCode() {
+  await rerandomize()
 }
 
 async function togglePublic(link) {
