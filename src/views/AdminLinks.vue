@@ -198,6 +198,7 @@ const statsLoading = ref(false)
 const notice       = ref({ msg: '', type: 'ok' })
 const codeStatus   = ref('') // '' | 'checking' | 'available' | 'taken'
 const isCustomCode = ref(false)
+const callbackUrl  = ref('')
 let   codeTimer    = null
 
 const form = ref({ destination: '', code: '', label: '', is_public: false })
@@ -259,6 +260,10 @@ async function createLink() {
   creating.value = false
   if (!data) return
   if (data.error) return showNotice(data.error, 'error')
+  if (callbackUrl.value) {
+    window.location.href = `${callbackUrl.value}?shortUrl=${encodeURIComponent(data.short_url)}`
+    return
+  }
   showNotice(`Created: ${data.short_url}`)
   form.value = { destination: '', code: '', label: '', is_public: false }
   isCustomCode.value = false
@@ -341,6 +346,11 @@ function formatDate(iso) {
 }
 
 onMounted(async () => {
+  const params = new URLSearchParams(window.location.search)
+  const prefill  = params.get('url')
+  const callback = params.get('callback')
+  if (prefill)   form.value.destination = decodeURIComponent(prefill)
+  if (callback)  callbackUrl.value      = callback
   await Promise.all([loadLinks(), rerandomize()])
 })
 </script>
