@@ -64,7 +64,7 @@ export default async function handler(req) {
   }
 
   const url     = new URL(req.url)
-  const rawPath = url.searchParams.get('path') || ''
+  const rawPath = url.searchParams.get('path') || url.pathname.replace(/^\/.netlify\/functions\/links-api\/?/, '').replace(/^\/api\/links\/?/, '')
   const parts   = rawPath.split('/').filter(Boolean)
   const code    = parts[0]
   const subpath = parts[1]
@@ -72,7 +72,7 @@ export default async function handler(req) {
   const store = getStore({ name: 'links', consistency: 'strong' })
 
   // ── GET /api/links/public — no auth ──────────────────────────────────────────
-  if (req.method === 'GET' && code === 'public') {
+  if (req.method === 'GET' && (code === 'public' || url.pathname.endsWith('/public'))) {
     let links
     try {
       const { blobs } = await store.list()
@@ -102,9 +102,8 @@ export default async function handler(req) {
   }
 
   // ── GET /api/links/check/:code — check code availability ─────────────────────
-  // Uses path segment (not query string) to avoid redirect-chain forwarding issues
-  if (req.method === 'GET' && code === 'check') {
-    const q = subpath?.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+  if (req.method === 'GET' && (code === 'check' || url.pathname.includes('/check/'))) {
+    const q = (subpath || url.pathname.split('/check/')[1])?.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
     if (!q) return json({ error: 'code is required' }, 400)
     if (RESERVED.includes(q)) return json({ available: false })
     const existing = await store.get(q).catch(() => null)
