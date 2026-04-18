@@ -22,7 +22,12 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), camera=(), microphone=()"
 
-# Admin SPA — serve index.html for all /admin routes
+# SPA routes — serve index.html (must be before /:code catch-all)
+[[redirects]]
+  from = "/new"
+  to = "/index.html"
+  status = 200
+
 [[redirects]]
   from = "/admin"
   to = "/index.html"

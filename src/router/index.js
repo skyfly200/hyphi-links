@@ -9,6 +9,7 @@ const router = createRouter({
     { path: '/',             component: PublicPage },
     { path: '/admin',        component: AdminLogin },
     { path: '/admin/links',  component: AdminLinks },
+    { path: '/new',          redirect: to => ({ path: '/admin/links', query: to.query }) },
   ],
 })
 

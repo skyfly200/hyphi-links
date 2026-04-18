@@ -122,14 +122,39 @@
               <div class="link-meta">{{ formatDate(link.created_at) }}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-              <span class="clicks-badge" @click="toggleStats(link.code)">
+              <span class="clicks-badge" @click="toggleStats(link.code)" title="View click stats">
                 {{ link.click_count ?? '—' }} clicks
               </span>
+              <button class="btn-ghost" @click="toggleQR(link.code)" title="Show QR code" style="font-size:.72rem;padding:4px 10px">QR</button>
               <button class="btn-ghost" @click="togglePublic(link)" style="font-size:.72rem;padding:4px 10px">
                 {{ link.is_public ? 'Make private' : 'Make public' }}
               </button>
               <button class="btn-ghost" @click="copyLink(`https://l.hyphi.art/${link.code}`)" style="font-size:.72rem;padding:4px 10px">Copy</button>
               <button class="btn-danger" @click="deleteLink(link.code)">Delete</button>
+            </div>
+          </div>
+
+          <!-- Inline QR code panel -->
+          <div v-if="openQR === link.code" style="padding:16px 0 12px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+            <img
+              :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('https://l.hyphi.art/'+link.code)}&bgcolor=0f0f1a&color=ddddf0&margin=10`"
+              width="180" height="180"
+              style="border-radius:8px;border:1px solid var(--bd);flex-shrink:0"
+              :alt="`QR code for l.hyphi.art/${link.code}`"
+            />
+            <div style="display:flex;flex-direction:column;gap:10px;justify-content:center">
+              <div class="link-code" style="font-size:.8rem">l.hyphi.art/{{ link.code }}</div>
+              <a
+                :href="`https://tools.hyphi.art/qr?url=${encodeURIComponent('https://l.hyphi.art/'+link.code)}`"
+                target="_blank"
+                class="btn-primary"
+                style="text-decoration:none;font-size:.78rem;padding:7px 14px;border-radius:8px;display:inline-block"
+              >Edit in QR Forge →</a>
+              <button
+                class="btn-ghost"
+                @click="downloadQR(link.code)"
+                style="font-size:.78rem;padding:6px 14px"
+              >Download QR</button>
             </div>
           </div>
 
@@ -195,6 +220,7 @@ const creating     = ref(false)
 const openStats    = ref(null)
 const statsData    = ref(null)
 const statsLoading = ref(false)
+const openQR       = ref(null)
 const notice       = ref({ msg: '', type: 'ok' })
 const codeStatus   = ref('') // '' | 'checking' | 'available' | 'taken'
 const isCustomCode = ref(false)
@@ -310,6 +336,19 @@ async function togglePublic(link) {
   if (data.error) return showNotice(data.error, 'error')
   link.is_public = !link.is_public
   showNotice(link.is_public ? `/${link.code} is now public` : `/${link.code} is now private`)
+}
+
+function toggleQR(code) {
+  openQR.value = openQR.value === code ? null : code
+}
+
+async function downloadQR(code) {
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent('https://l.hyphi.art/'+code)}&bgcolor=0f0f1a&color=ddddf0&margin=20`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `qr-${code}.png`
+  a.target = '_blank'
+  a.click()
 }
 
 async function toggleStats(code) {
