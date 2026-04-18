@@ -1,0 +1,22 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import PublicPage  from '../views/PublicPage.vue'
+import AdminLogin  from '../views/AdminLogin.vue'
+import AdminLinks  from '../views/AdminLinks.vue'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/',             component: PublicPage },
+    { path: '/admin',        component: AdminLogin },
+    { path: '/admin/links',  component: AdminLinks },
+  ],
+})
+
+router.beforeEach((to, _from, next) => {
+  const authed = !!localStorage.getItem('hyphi_admin_secret')
+  if (to.path === '/admin'       && authed)  return next('/admin/links')
+  if (to.path === '/admin/links' && !authed) return next('/admin')
+  next()
+})
+
+export default router

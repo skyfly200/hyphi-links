@@ -13,15 +13,24 @@
 [context.production.environment]
   NODE_ENV = "production"
 
-# Admin UI
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=()"
+
+# Admin SPA — serve index.html for all /admin routes
 [[redirects]]
   from = "/admin"
-  to = "/admin/index.html"
+  to = "/index.html"
   status = 200
 
 [[redirects]]
   from = "/admin/*"
-  to = "/admin/index.html"
+  to = "/index.html"
   status = 200
 
 # API routes — must come before /:code catch-all
