@@ -14,7 +14,7 @@ import { getStore } from '@netlify/blobs'
 import { createClient } from '@supabase/supabase-js'
 import { timingSafeEqual } from 'crypto'
 
-const CHARSET  = 'abcdefghjkmnpqrstuvwxyz23456789' // no confusable chars
+const CHARSET  = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789' // no confusable chars
 const RESERVED = ['public', 'check']
 
 function randomCode(len = 5) {
@@ -103,7 +103,7 @@ export default async function handler(req) {
 
   // ── GET /api/links/check/:code — check code availability ─────────────────────
   if (req.method === 'GET' && (code === 'check' || url.pathname.includes('/check/'))) {
-    const q = (subpath || url.pathname.split('/check/')[1])?.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+    const q = (subpath || url.pathname.split('/check/')[1])?.trim().replace(/[^a-zA-Z0-9-]/g, '')
     if (!q) return json({ error: 'code is required' }, 400)
     if (RESERVED.includes(q)) return json({ available: false })
     const existing = await store.get(q).catch(() => null)
@@ -125,7 +125,7 @@ export default async function handler(req) {
       return json({ error: 'destination must use http or https' }, 400)
     }
 
-    let slug = (body.code || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+    let slug = (body.code || '').trim().replace(/[^a-zA-Z0-9-]/g, '')
     if (!slug) {
       let attempts = 0
       do {

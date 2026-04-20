@@ -208,7 +208,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const secret = localStorage.getItem('hyphi_admin_secret') || ''
 
-const CHARSET = 'abcdefghjkmnpqrstuvwxyz23456789'
+const CHARSET = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
 function generateCode(len = 5) {
   let code = ''
