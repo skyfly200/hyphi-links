@@ -15,7 +15,7 @@ import { createClient } from '@supabase/supabase-js'
 import { timingSafeEqual } from 'crypto'
 
 const CHARSET  = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789' // no confusable chars
-const RESERVED = ['public', 'check']
+const RESERVED = ['public', 'check', 'stats']
 
 function randomCode(len = 5) {
   let code = ''
@@ -108,6 +108,23 @@ export default async function handler(req) {
     if (RESERVED.includes(q)) return json({ available: false })
     const existing = await store.get(q).catch(() => null)
     return json({ available: !existing })
+  }
+
+  // ── GET /api/links/stats — aggregate clicks for all links (last 30 days) ─────
+  if (req.method === 'GET' && code === 'stats' && !subpath) {
+    const supabase = getSupabase()
+    if (!supabase) return json({ error: 'Supabase not configured' }, 503)
+    const since = new Date(Date.now() - 30 * 86400000).toISOString()
+    const { data: clicks, error } = await supabase
+      .from('clicks')
+      .select('clicked_at')
+      .gte('clicked_at', since)
+      .order('clicked_at', { ascending: true })
+    if (error) {
+      console.error('[Supabase] Aggregate stats error:', error.message)
+      return json({ error: error.message }, 500)
+    }
+    return json({ clicks: clicks || [] })
   }
 
   // ── POST /api/links — create ──────────────────────────────────────────────────
