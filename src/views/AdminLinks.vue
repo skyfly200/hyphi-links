@@ -3,6 +3,7 @@
     <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px">
       <div class="logo">l.<em>hyphi</em>.art <span style="font-size:.7rem;color:var(--mu);font-weight:400">admin</span></div>
       <div style="display:flex;gap:8px;align-items:center">
+        <RouterLink to="/dashboard" style="font-size:.78rem;color:var(--mu);text-decoration:none">Dashboard</RouterLink>
         <RouterLink to="/" style="font-size:.78rem;color:var(--mu);text-decoration:none">Public page</RouterLink>
         <button class="btn-ghost" @click="logout" style="font-size:.75rem">Sign out</button>
       </div>
@@ -62,7 +63,7 @@
           <input
             type="text"
             v-model="form.label"
-            placeholder="e.g. QRForge launch"
+            placeholder="e.g. Hyphi site"
             title="Optional display name — shown alongside the code in the admin list and public page"
           />
         </div>
