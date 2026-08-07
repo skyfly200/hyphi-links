@@ -77,63 +77,88 @@ async function logClick({ code, destination, userAgent, ip, referrer, country })
   }
 }
 
+// ─── Branded status page ─────────────────────────────────────────────────────
+function statusPage({ title, message, status }) {
+  return new Response(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#080810;color:#ddddf0}
+    .box{text-align:center;padding:24px}.logo{font-size:2rem;font-weight:800;margin-bottom:8px}em{color:#b48eff;font-style:normal}
+    p{color:#55556a;margin-top:8px}a{color:#b48eff}</style></head>
+    <body><div class="box"><div class="logo">l.<em>hyphi</em>.art</div>
+    <p>${message}</p>
+    <p><a href="https://hyphi.art">← hyphi.art</a></p></div></body></html>`,
+    { status, headers: { 'Content-Type': 'text/html' } }
+  )
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 export default async function handler(req, context) {
-  // Extract short code — from query param (passed by netlify.toml redirect rule)
-  // or fall back to path segment for direct function calls
-  const url   = new URL(req.url)
-  const code  = url.searchParams.get('code') ||
-                url.pathname.replace(/^\//, '').split('/').filter(p => p && p !== 'redirect')[0]
-
-  if (!code || code === 'favicon.ico') {
-    return new Response('Not found', { status: 404 })
-  }
-
-  // Look up the code in Netlify Blobs
-  const store = getStore({ name: 'links', consistency: 'strong' })
-  let entry
-
   try {
-    const raw = await store.get(code, { type: 'json' })
-    entry = raw
-  } catch {
-    entry = null
-  }
+    // Extract short code — from query param (passed by netlify.toml redirect rule)
+    // or fall back to path segment for direct function calls
+    const url   = new URL(req.url)
+    const code  = url.searchParams.get('code') ||
+                  url.pathname.replace(/^\//, '').split('/').filter(p => p && p !== 'redirect')[0]
 
-  if (!entry || !entry.destination) {
-    return new Response(
-      `<!doctype html><html><head><meta charset="utf-8"><title>Link not found</title>
-      <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#080810;color:#ddddf0}
-      .box{text-align:center}.logo{font-size:2rem;font-weight:800;margin-bottom:8px}em{color:#b48eff;font-style:normal}
-      p{color:#55556a;margin-top:8px}a{color:#b48eff}</style></head>
-      <body><div class="box"><div class="logo">l.<em>hyphi</em>.art</div>
-      <p>This link doesn't exist or has expired.</p>
-      <p><a href="https://hyphi.art">← hyphi.art</a></p></div></body></html>`,
-      { status: 404, headers: { 'Content-Type': 'text/html' } }
-    )
-  }
-
-  // Gather request metadata for analytics
-  const userAgent = req.headers.get('user-agent') || ''
-  const referrer  = req.headers.get('referer')    || ''
-  const ip        = context.ip || req.headers.get('x-forwarded-for')?.split(',')[0].trim() || ''
-  const country   = context.geo?.country?.code    || req.headers.get('x-country')           || ''
-
-  // Await analytics before returning — serverless execution freezes on response,
-  // so unawaited promises get cut off before Supabase can finish the insert.
-  await Promise.all([
-    logClick({ code, destination: entry.destination, userAgent, ip, referrer, country }),
-    sendGAEvent({ code, destination: entry.destination, userAgent, ip, referrer }),
-  ]).catch(err => console.error('[Analytics] Error:', err.message))
-
-  // Redirect
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location:      entry.destination,
-      'Cache-Control': 'no-store, no-cache',
+    if (!code || code === 'favicon.ico') {
+      return statusPage({ title: 'Not found', message: 'No link code was provided.', status: 404 })
     }
-  })
+
+    // Look up the code in Netlify Blobs
+    let entry = null
+    try {
+      const store = getStore({ name: 'links', consistency: 'strong' })
+      entry = await store.get(code, { type: 'json' })
+    } catch (err) {
+      // Storage failure is a real server error — surface it as 502, not a false 404
+      console.error('[Blobs] Lookup error:', err.message)
+      return statusPage({
+        title: 'Temporarily unavailable',
+        message: 'We couldn’t reach link storage. Please try again in a moment.',
+        status: 502,
+      })
+    }
+
+    if (!entry || !entry.destination) {
+      return statusPage({
+        title: 'Link not found',
+        message: 'This link doesn’t exist or has expired.',
+        status: 404,
+      })
+    }
+
+    // Gather request metadata for analytics
+    const userAgent = req.headers.get('user-agent') || ''
+    const referrer  = req.headers.get('referer')    || ''
+    const ip        = context.ip || req.headers.get('x-forwarded-for')?.split(',')[0].trim() || ''
+    const country   = context.geo?.country?.code    || req.headers.get('x-country')           || ''
+
+    // Await analytics before returning — serverless execution freezes on response,
+    // so unawaited promises get cut off before Supabase can finish the insert.
+    // Analytics must never block or break the redirect itself.
+    await Promise.allSettled([
+      logClick({ code, destination: entry.destination, userAgent, ip, referrer, country }),
+      sendGAEvent({ code, destination: entry.destination, userAgent, ip, referrer }),
+    ])
+
+    // Redirect
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location:      entry.destination,
+        'Cache-Control': 'no-store, no-cache',
+      }
+    })
+  } catch (err) {
+    // Last-resort guard — never let an unexpected throw become a bare 500
+    console.error('[Redirect] Unexpected error:', err?.message || err)
+    return statusPage({
+      title: 'Something went wrong',
+      message: 'An unexpected error occurred. Please try again shortly.',
+      status: 500,
+    })
+  }
 }
 
 
