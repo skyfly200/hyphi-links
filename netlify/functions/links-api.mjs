@@ -52,6 +52,15 @@ function json(data, status = 200) {
 }
 
 export default async function handler(req) {
+  try {
+    return await route(req)
+  } catch (err) {
+    console.error('[links-api] Unexpected error:', err?.message || err)
+    return json({ error: 'Internal server error' }, 500)
+  }
+}
+
+async function route(req) {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -69,7 +78,13 @@ export default async function handler(req) {
   const code    = parts[0]
   const subpath = parts[1]
 
-  const store = getStore({ name: 'links', consistency: 'strong' })
+  let store
+  try {
+    store = getStore({ name: 'links', consistency: 'strong' })
+  } catch (err) {
+    console.error('[Blobs] Store init error:', err.message)
+    return json({ error: 'Link storage is unavailable' }, 503)
+  }
 
   // ── GET /api/links/public — no auth ──────────────────────────────────────────
   if (req.method === 'GET' && (code === 'public' || url.pathname.endsWith('/public'))) {
