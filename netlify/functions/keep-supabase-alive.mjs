@@ -12,20 +12,33 @@
 // inside the window — so one hiccup won't let the project sleep.
 //
 // Configuration (Netlify environment variables):
-//   SUPABASE_URL         required, e.g. https://abcdefgh.supabase.co
-//   SUPABASE_ANON_KEY    required (SUPABASE_KEY also accepted)
-//   SUPABASE_PING_TABLE  optional. A table name to touch. If unset,
-//                        the PostgREST root is hit, whose schema
-//                        introspection also queries the database.
+//   SUPABASE_URL          required, e.g. https://abcdefgh.supabase.co
+//   one Supabase key       required. Any of these is accepted, in order:
+//                          SUPABASE_ANON_KEY, SUPABASE_KEY,
+//                          SUPABASE_SERVICE_KEY. The redirect function in
+//                          this repo already sets SUPABASE_SERVICE_KEY, so
+//                          the keep-alive works with the site's existing
+//                          config without adding a separate anon key.
+//   SUPABASE_PING_TABLE   optional. A table name to touch. Defaults to
+//                          `clicks` (the analytics table this repo owns),
+//                          so the ping executes a real query. Set to an
+//                          empty string to hit the PostgREST root instead.
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
-const PING_TABLE   = process.env.SUPABASE_PING_TABLE;
+const SUPABASE_KEY =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY;
+const PING_TABLE =
+  process.env.SUPABASE_PING_TABLE === undefined
+    ? 'clicks'
+    : process.env.SUPABASE_PING_TABLE;
 
 export default async () => {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error(
-      'keep-supabase-alive: SUPABASE_URL and SUPABASE_ANON_KEY must be set.'
+      'keep-supabase-alive: SUPABASE_URL and a Supabase key ' +
+        '(SUPABASE_ANON_KEY, SUPABASE_KEY, or SUPABASE_SERVICE_KEY) must be set.'
     );
     return new Response('Missing Supabase configuration.', { status: 500 });
   }
